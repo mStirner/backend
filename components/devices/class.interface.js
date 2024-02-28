@@ -39,6 +39,14 @@ module.exports = class Interface {
         let { interfaceStreams } = require("../../system/shared.js");
         interfaceStreams.set(this._id, stream);
 
+        // hot fix for #350
+        Object.defineProperty(this, "cachedAgent", {
+            value: null,
+            enumerable: false,
+            configurable: false,
+            writable: true
+        });
+
     }
 
     /**
@@ -199,6 +207,10 @@ module.exports = class Interface {
     // NEW VERSION, fix for #329
     httpAgent(options = {}) {
 
+        if (this.cachedAgent) {
+            return this.cachedAgent;
+        }
+
         let agent = new Agent({
             keepAlive: true,
             maxSockets: 1,
@@ -207,10 +219,25 @@ module.exports = class Interface {
 
         //let settings = this.settings;
 
+        /*
+        // added for testing a solution for #411
+        // does nothing/not work, but feels like can be useful in the future
+        // see: 
+        // - https://nodejs.org/docs/latest/api/http.html#agentkeepsocketalivesocket
+        // - https://nodejs.org/docs/latest/api/http.html#agentkeepsocketalivesocket
+        agent.keepSocketAlive = (socket) => {
+            console.log("agent.keepSocketAlive called");
+            return true;
+        };
 
-        agent.createConnection = ({ host = null, port = null }) => {
+        agent.reuseSocket = (socket, request) => {
+            console.log("agent.reuseSocket called");
+        };
+        */
 
-            console.log(`############## Create connection to tcp://${host}:${port}`);
+        agent.createConnection = ({ headers = {} }) => {
+
+            //console.log(`############## Create connection to tcp://${host}:${port}`);
 
             // cleanup, could be possible be piped from previous "connections"
             this.stream.unpipe();
@@ -231,17 +258,33 @@ module.exports = class Interface {
             //let readable = new PassThrough();
             //let writable = new PassThrough();
 
+            // convert headers key/values to lowercase
+            // the string conversion prevents a error thrown for numbers
+            // this happens for websocket requests, where e.g. "sec-websocket-version=13"
+            // see snipp below "detect websocket connection with set headers"
+            headers = Object.keys(headers).reduce((obj, key) => {
+                obj[key.toLowerCase()] = `${headers[key]}`.toLowerCase();
+                return obj;
+            }, {});
+
+
             let readable = new Transform({
                 transform(chunk, enc, cb) {
 
-                    //console.log("[incoming]", chunk.toString());
+                    //console.log("[incoming]", chunk);
 
                     // temp fix for #343
                     // this is not the prefered fix for this issue
                     // it should be handled on "stream/socket" level instead
                     // the issue above occoured with a "shelly 1pm" and parallel requests to /status /ota /settings
                     // NOTE: what if the body contains json that has a `connection: close` property/key/value?
-                    chunk = chunk.toString().replace(/connection:\s?close\r\n/i, "connection: keep-alive\r\n");
+
+                    // detect websocket connection with set headers, fix #411
+                    // agent.protocol is never "ws" regardless of the url used in requests
+                    // temp solution, more like a hotfix than a final solution
+                    if (agent.protocol === "http:" && !(headers?.upgrade === "websocket" && headers?.connection === "upgrade")) {
+                        chunk = chunk.toString().replace(/connection:\s?close\r\n/i, "connection: keep-alive\r\n");
+                    }
 
                     this.push(chunk);
                     cb();
@@ -252,7 +295,7 @@ module.exports = class Interface {
             let writable = new Transform({
                 transform(chunk, enc, cb) {
 
-                    //console.log("[outgoing]", chunk.toString());
+                    //console.log("[outgoing]", chunk);
 
                     this.push(chunk);
                     cb();
@@ -292,28 +335,28 @@ module.exports = class Interface {
                 writable
             });
 
-            stream.destroy = (...args) => {
-                console.log("socket.destroy();", args);
+            stream.destroy = () => {
+                //console.log("socket.destroy();", args);
             };
 
-            stream.ref = (...args) => {
-                console.log("socket.unref();", args);
+            stream.ref = () => {
+                //console.log("socket.unref();", args);
             };
 
-            stream.unref = (...args) => {
-                console.log("socket.unref();", args);
+            stream.unref = () => {
+                //console.log("socket.unref();", args);
             };
 
-            stream.setKeepAlive = (...args) => {
-                console.log("socket.setKeepAlive()", args);
+            stream.setKeepAlive = () => {
+                //console.log("socket.setKeepAlive()", args);
             };
 
-            stream.setTimeout = (...args) => {
-                console.log("socket.setTimeout();", args);
+            stream.setTimeout = () => {
+                //console.log("socket.setTimeout();", args);
             };
 
-            stream.setNoDelay = (...args) => {
-                console.log("socket.setNotDelay();", args);
+            stream.setNoDelay = () => {
+                //console.log("socket.setNotDelay();", args);
             };
 
             this.stream.pipe(readable, { end: false });
@@ -323,6 +366,7 @@ module.exports = class Interface {
 
         };
 
+        this.cachedAgent = agent;
         return agent;
 
     }
