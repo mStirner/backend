@@ -6,7 +6,7 @@ const logger = require("../../system/logger/index.js");
 const semver = require("semver");
 //const pkg = require("../../package.json");
 const uuid = require("uuid");
-const { Worker, isMainThread } = require("worker_threads");
+const { Worker, isMainThread, workerData } = require("worker_threads");
 const { pipeline } = require("stream");
 const stdio = require("../../system/plugin/stdio.js");
 
@@ -144,6 +144,28 @@ module.exports = class Plugin extends Item {
         };
 
         return init;
+
+    }
+
+    static Plugin(cb) {
+
+        if (isMainThread) {
+            throw new Error("This function needs to be called inside a worker thread!");
+        }
+
+        // create logger
+        // pass init function
+        let log = logger.create();
+
+        let init = Plugin.init([
+            // allowed components
+            ...workerData.plugin.intents
+        ], logger);
+
+        return Reflect.apply(cb, null, [
+            log,
+            init
+        ]);
 
     }
 
@@ -285,11 +307,10 @@ module.exports = class Plugin extends Item {
         }
     }
 
-    /*
-    stop(){
-        // TODO: Implement
-        // When plugins run in seperate worker process
+    stop() {
+        if (this.started && this.worker) {
+            this.worker.terminate();
+        }
     }
-    */
 
 };

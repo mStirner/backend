@@ -1,5 +1,5 @@
 const path = require("path");
-const { workerData: { plugin } } = require("worker_threads");
+const { workerData: { plugin }, isMainThread } = require("worker_threads");
 
 // TODO: mute system messages e.g. db connection output
 //process.env.LOG_SUPPRESS = "true";
@@ -21,18 +21,24 @@ const log = logger.create(`plugins/${plugin.uuid}`);
 
 const init_database = require("../init/init.database.js");
 const init_components = require("../init/init.components.js");
-const { init } = require("../../components/plugins/class.plugin.js");
+const { init/*, Plugin*/ } = require("../../components/plugins/class.plugin.js");
 
 (async () => {
+
+    if (isMainThread) {
+        throw new Error("Needs to be running in a worker thread");
+    }
 
     await init_database(logger)();
     await init_components(logger)(plugin.intents);
 
     let folder = path.join(process.cwd(), "plugins", plugin.uuid);
     let entry = require(path.join(folder, "index.js"));
-
     let start = init(plugin, log);
-    //let returns = require(path.resolve(process.cwd(), "plugins", plugin.uuid, "index.js"))(plugin, log, start);
+
+    // new plugin entry point/function wrapper
+    // should be in newer version userd
+    // let returns = Plugin(entry);
 
     let returns = Reflect.apply(entry, null, [
         plugin,
