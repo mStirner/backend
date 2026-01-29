@@ -31,18 +31,27 @@ module.exports = function (grunt) {
                 files: [{
                     expand: true,
                     src: [
-                        //"package.json",
-                        //"package-lock.json",
                         "**/*.js",
                         "!plugins/**",
-                        "**/*.gitkeep",
-                        "!Gruntfile.js",
                         "!node_modules/**",
                         "!scripts/**",
-                        "!tests/**"
+                        "!tests/**",
+                        "!Gruntfile.js"
                     ],
                     dest: PATH_BUILD,
-                    //cwd: process.cwd()
+                    filter: function (filepath) {
+                        // globe excludes above do not work anymore
+                        return ![
+                            /plugins/,
+                            /node_modules/,
+                            /scripts/,
+                            /tests/,
+                            /Gruntfile\.js/
+                        ].some((regex) => {
+                            return filepath.match(regex);
+                        });
+                    },
+                    cwd: process.cwd()
                 }]
             }
         }
