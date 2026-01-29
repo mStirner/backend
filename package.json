@@ -21,7 +21,8 @@
     "db:import": "mongorestore --db OpenHaus --archive=./demo-database.gz",
     "postinstall": "scripts/post-install.sh",
     "publish": "grunt publish",
-    "prepare": "husky"
+    "prepare": "husky",
+    "nginx": "docker run --rm -it --net=host -v $PWD/nginx.conf:/etc/nginx/nginx.conf:ro nginx"
   },
   "engines": {
     "node": ">=22.0.0"
