@@ -220,7 +220,14 @@ module.exports = (app, router) => {
 
         tar.once("exit", (code) => {
 
+            logger.debug(`tar exited with code=${code}`);
+
             if (code > 0) {
+
+                logger.warn(`tar exit code=${code}, something went wrong!`);
+
+                totalProgress(100, 100);
+
                 if (!res.headersSent) {
 
                     res.status(400).json({
@@ -229,10 +236,12 @@ module.exports = (app, router) => {
                     });
 
                 }
+
             } else {
 
                 // skip installation step below
                 if (!req.install) {
+                    totalProgress(100, 100);
                     return res.json(req.item);
                 }
 
@@ -279,6 +288,9 @@ module.exports = (app, router) => {
                 }
 
                 if (req.install) {
+
+                    logger.debug(`Install plugin dependencies in ${req.folder} with installer "${process.env.PLUGIN_INSTALLER}"`);
+
                     if (process.env.PLUGIN_INSTALLER === "pnpm") {
 
                         const pnpm = spawn(process.execPath, [
@@ -294,17 +306,23 @@ module.exports = (app, router) => {
                             }
                         });
 
-                        pnpm.on("exit", code => {
+                        pnpm.on("error", (err) => {
+                            logger.error(err, "Could not install dependencies with pnpm");
+                            totalProgress(100, 100);
+                        });
+
+                        pnpm.once("exit", code => {
                             if (code === 0) {
 
-                                //console.log("Installation finished");
+                                logger.info(`Plugin installation "${req.item.name}" finished`);
 
                                 totalProgress(100, 100);
                                 res.json(req.item);
 
                             } else {
 
-                                //console.log("Installation error, exit code not 0", code);
+                                logger.warn(`Plugin installation "${req.item.name}" failed`);
+
                                 res.status(400).json({
                                     error: "npm could not install dependencies",
                                     details: `npm exit code ${code}`
@@ -351,16 +369,22 @@ module.exports = (app, router) => {
                             npm.stderr.pipe(process.stderr);
                         }
 
+                        npm.on("error", (err) => {
+                            logger.error(err, "Could not install dependencies with pnpm");
+                            totalProgress(100, 100);
+                        });
+
                         npm.once("exit", (code) => {
                             if (code === 0 || code === 254) {
 
-                                // npm does not support to extrat installation progress in any way
-                                // just set 100 when completed
-                                totalProgress(uploadProgress, 100);
+                                logger.info(`Plugin installation "${req.item.name}" finished`);
 
+                                totalProgress(100, 100);
                                 res.json(req.item);
 
                             } else {
+
+                                logger.warn(`Plugin installation "${req.item.name}" failed`);
 
                                 res.status(400).json({
                                     error: "npm could not install dependencies",
@@ -374,11 +398,14 @@ module.exports = (app, router) => {
 
                         logger.warn(`Plugin installer "${process.env.PLUGIN_INSTALLER}" unsuportted`);
 
+                        totalProgress(100, 100);
+
                         res.status(500).json({
                             error: `Plugin installer "${process.env.PLUGIN_INSTALLER}" unsuportted`
                         });
 
                     }
+
                 }
 
             }
