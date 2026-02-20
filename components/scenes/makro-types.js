@@ -31,7 +31,8 @@ module.exports = {
         // unclever named/naming
         signal.signal.addEventListener("abort", () => {
             clearTimeout(timeout);
-            reject();
+            reject("Aborted");
+            //resolve();
         }, {
             once: true
         });
