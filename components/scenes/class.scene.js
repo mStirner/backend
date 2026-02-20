@@ -143,6 +143,7 @@ module.exports = class Scene extends Item {
             makros: Joi.array().items(Makro.schema()).default([]),
             triggers: Joi.array().items(Trigger.schema()).default([]),
             visible: Joi.boolean().default(true),
+            enabled: Joi.boolean().default(true),
             icon: Joi.string().allow(null).default(null),
             inputs: Joi.array().items(Input.schema()).default([]),
             states: Joi.object({
@@ -170,6 +171,15 @@ module.exports = class Scene extends Item {
     trigger(inputs = []) {
 
         let { logger } = Scene.scope;
+
+        if (!this.enabled) {
+
+            logger.info(`Scene "${this.name}" is not enabled, do not execute makros!`);
+
+            return;
+
+        }
+
         logger.info(`Trigger scene "${this.name}" (${this._id}), inputs:`, inputs);
 
         // fix #507
@@ -282,7 +292,7 @@ module.exports = class Scene extends Item {
             logger.debug(`Scene "${this.name}" finished`);
         }).catch((err) => {
             this.states.finished = false;
-            logger.debug(err, `Scene "${this.name}" error`);
+            logger.warn(err, `Scene "${this.name}" error:`);
         }).finally(() => {
             this.states.running = false;
             logger.info(`Scene "${this.name}" runned`, this.states);
