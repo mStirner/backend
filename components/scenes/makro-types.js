@@ -26,10 +26,7 @@ module.exports = {
             resolve();
         }, makro.value);
 
-        // signal = AbortController instance
-        // so signal.signal = AbortSignal...
-        // unclever named/naming
-        signal.signal.addEventListener("abort", () => {
+        signal.addEventListener("abort", () => {
             clearTimeout(timeout);
             reject("Aborted");
             //resolve();
