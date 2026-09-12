@@ -356,8 +356,18 @@ module.exports = (router) => {
         const extractStream = new ExtractStream();
 
         extractStream.once("header", ({ fields }) => {
-            let { totalFiles } = JSON.parse(fields["md"].toString());
-            metadata.totalFiles = totalFiles;
+            try {
+
+                let { totalFiles = 0 } = JSON.parse(fields["md"]?.toString());
+                metadata.totalFiles = totalFiles;
+
+            } catch (err) {
+
+                // could not parse metadata
+                // ignore error an proceed without progress calucation
+                console.error(err);
+
+            }
         });
 
         // NOTE: switch to `.once`?
