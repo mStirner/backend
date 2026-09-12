@@ -154,7 +154,7 @@ module.exports = (app, router) => {
                 ws.filter = {
                     events: req.query.events || req.query.intents || [
                         "add",
-                        "get",
+                        //"get",
                         "update",
                         "remove"
                     ],
