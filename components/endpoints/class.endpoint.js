@@ -10,6 +10,27 @@ const Item = require("../../system/component/class.item.js");
 const _expose = require("../../helper/expose.js");
 const _debounce = require("../../helper/debounce.js");
 
+const PAGES_SCHEMA = Joi.object({
+    title: Joi.string().required(),
+    size: Joi.object({
+        h: Joi.number().min(1).default(5), // vertical
+        w: Joi.number().min(1).default(3), // horizontal        
+        //gap: Joi.boolean().default(false)
+    }),
+    items: Joi.array().items(Joi.object({
+        size: Joi.object({
+            h: Joi.number().min(1).required(), // vertical
+            w: Joi.number().min(1).required(), // horizontal
+        }),
+        position: Joi.object({
+            x: Joi.number().min(1).required(), // horizontal
+            y: Joi.number().min(1).required(), // vertical
+        }),
+        type: Joi.string().valid("command", "state", "empty").default("command"),
+        alias: Joi.string().required()
+    }))
+}).default();
+
 /**
  * @description
  * Endpoint item, stored in the component `.items` Array.
@@ -33,6 +54,7 @@ const _debounce = require("../../helper/debounce.js");
  * @see InterfaceStream components/devices/class.interfaceStream.js
  */
 module.exports = class Endpoint extends Item {
+
     constructor(obj) {
 
         super(obj);
@@ -115,11 +137,12 @@ module.exports = class Endpoint extends Item {
             enabled: Joi.boolean().default(true),
             room: Joi.string().pattern(/^[0-9a-fA-F]{24}$/).allow(null).default(null),
             device: Joi.string().pattern(/^[0-9a-fA-F]{24}$/).required(),
-            commands: Joi.array().items(Command.schema()).default([]),
-            states: Joi.array().items(State.schema()).default([]),
+            commands: Joi.array().items(Command.schema()).default([]).unique("alias"),
+            states: Joi.array().items(State.schema()).default([]).unique("alias"),
             // removed, see #438
             //identifier: Joi.any().allow(null).default(null),   // usefull for ssdp, etc.
-            icon: Joi.string().allow(null).default(null)
+            icon: Joi.string().allow(null).default(null),
+            pages: Joi.array().items(PAGES_SCHEMA).default([])
         });
     }
 
