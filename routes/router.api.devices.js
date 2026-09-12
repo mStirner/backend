@@ -1,7 +1,7 @@
 const WebSocket = require("ws");
 //const { finished } = require("stream");
 const C_DEVICES = require("../components/devices");
-const { WEBSOCKET_SERVER } = require("../components/devices/class.interface.js");
+const { WEBSOCKET_SERVER, PENDING_BRIDGES } = require("../components/devices/class.interface.js");
 
 const { connections } = require("../system/worker/shared.js");
 const MessagePortStream = require("../system/worker/class.messageportstream.js");
@@ -92,7 +92,50 @@ module.exports = (app, router) => {
                 // listen only once to connectoin event
                 // gets fired every time websocket client hit this url/route
                 wss.on("connection", (ws, req) => {
-                    // TODO: check for pending request, if not peding, terminate ws connection
+
+                    let valid = 1;
+
+                    // check if query has all needed props
+                    valid &= ["socket", "type", "uuid"].every((prop) => {
+                        return Object.hasOwnProperty.call(req.query, prop);
+                    });
+
+                    // check if connection is valid bridge response
+                    valid &= !!Array.from(PENDING_BRIDGES).find((request) => {
+                        return request.uuid === req.query?.uuid && request.iface === req.params?._iid;
+                    });
+
+                    // TODO: add crypto handshake, e.g:
+                    //const expectedSignature = crypto.createHmac('sha256', secret).update(JSON.stringify(data)).digest('hex');
+                    //valid &= signature?.length === expectedSignature.length;
+                    //valid &= crypto.timingSafeEqual(Buffer.from(signature, 'hex'), Buffer.from(expectedSignature, 'hex'));
+
+                    if (!valid) {
+
+                        // close unwanted socket
+                        // no open/pending bridge
+                        ws.close(1008, "NO_PENDING_BRIDGE_REQUEST");
+
+                        // force terminate if no close handshake happens
+                        // free resources, otherwise this could leak 
+                        let timeout = setTimeout(() => {
+                            ws.terminate();
+                        }, 3000);
+
+                        ["close", "error"].forEach((event) => {
+                            ws.once(event, (erco, reason) => {
+
+                                console.log(event, "Client hat geantwortet:", erco, reason?.toString());
+
+                                clearTimeout(timeout);
+
+                            });
+                        });
+
+                        return;
+
+                    }
+
                     if (req.query?.uuid && req.query?.socket === "true" && req.query?.type === "response") {
 
                         // new bridge/connector practice
