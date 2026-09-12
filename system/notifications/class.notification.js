@@ -101,7 +101,7 @@ module.exports = class Notification {
             uuid: Joi.string().default(() => {
                 return randomUUID();
             }),
-            type: Joi.string().valid("info", "warn", "error").default("info"),
+            type: Joi.string().valid("info", "warn", "error", "success").default("info"),
             //actions: Joi.array().items().default([]),
             //retain: Joi.boolean().default(false),
             timestamps: Joi.object({
