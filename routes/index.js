@@ -14,6 +14,8 @@ const C_WEBHOOKS = require("../components/webhooks");
 const C_MQTT = require("../components/mqtt");
 const C_MDNS = require("../components/mdns");
 
+const { version } = require("../package.json");
+
 // Remove due to issue #273
 //const { encode } = require("../helper/sanitize");
 //const iterate = require("../helper/iterate");
@@ -112,6 +114,12 @@ require("./router.api.about.js")(app, about);
 
 [/*"events",*/ "about", "logs"].forEach((route) => {
     logger.warn(`http://${process.env.HTTP_ADDRESS}:${process.env.HTTP_PORT}/api/${route} is derpecated and will be removed in v4`);
+});
+
+api.get("/about.json", (req, res) => {
+    res.json({
+        version
+    });
 });
 
 // ensure that all requests to /api are authenticated
