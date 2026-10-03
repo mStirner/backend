@@ -322,6 +322,20 @@ module.exports = class Command {
                 cb = () => { };
             }
 
+            if (!Array.isArray(params)) {
+                params = Object.entries(params).map(([key, value]) => {
+
+                    return {
+                        key,
+                        value
+                    };
+
+                });
+            }
+
+            // emit command event?
+            // Command.scope.events.emit("command", this, params)
+
             // moved up, and used as callback debounce function
             // see #528, timeout helper has a internal "called" flag
             let timer = _timeout(this.#privates.get("timeout"), (timedout, duration, args) => {

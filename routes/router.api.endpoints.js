@@ -44,11 +44,15 @@ module.exports = (app, router) => {
                 req.body = [];
             }
 
+            /*
+            // convert params in class.command.js
+            // params can now be a "lean object"
             if (!Array.isArray(req.body)) {
                 return res.status(400).json({
                     error: "Array expected in request body"
                 });
             }
+            */
 
             req.cmd.trigger(req.body, (err, success) => {
                 if (err) {
