@@ -16,6 +16,8 @@ const C_MDNS = require("../components/mdns");
 
 const { version } = require("../package.json");
 
+const START = Date.now();
+
 // Remove due to issue #273
 //const { encode } = require("../helper/sanitize");
 //const iterate = require("../helper/iterate");
@@ -118,7 +120,8 @@ require("./router.api.about.js")(app, about);
 
 api.get("/about.json", (req, res) => {
     res.json({
-        version
+        version,
+        start: START
     });
 });
 
