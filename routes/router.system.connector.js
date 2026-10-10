@@ -20,11 +20,16 @@ module.exports = (router) => {
         wss.clients.forEach((ws) => {
 
             if (!ws.isAlive) {
+
                 ws.terminate();
-                //CONNECTORS.delete(ws.info);
-                ws.info.connections = 0;
-                ws.info.timestamps.disconnected = Date.now();
+
+                if (ws.info) {
+                    ws.info.connections = 0;
+                    ws.info.timestamps.disconnected = Date.now();
+                }
+
                 return;
+
             }
 
             ws.isAlive = false;
@@ -97,16 +102,17 @@ module.exports = (router) => {
             });
 
             ws.connectedAt = Date.now();
-            ws.ip = req.socket.remoteAddress;
+            ws.ip = req.ip || req.socket.remoteAddress;
 
             const applyInfo = (rawInfo) => {
 
                 let obj = Array.from(CONNECTORS).find((about) => {
-                    return about.hostname === rawInfo.hostname;
+                    return about.hostname === rawInfo.hostname && about.ip === ws.ip;
                 });
 
+                // client cant override ip or timestamps
                 // eslint-disable-next-line
-                let { timestamps, ...rest } = rawInfo;
+                let { timestamps, ip, ...rest } = rawInfo;
 
                 if (!obj) {
                     obj = {
@@ -165,9 +171,14 @@ module.exports = (router) => {
             });
 
             ws.once("close", () => {
-                ws.info.connections = 0;
-                ws.info.timestamps.disconnected = Date.now();
+
+                if (ws.info) {
+                    ws.info.connections = 0;
+                    ws.info.timestamps.disconnected = Date.now();
+                }
+
                 emitter.emit("info", ws.info);
+
             });
 
             wss.emit("connection", ws, req);
