@@ -95,7 +95,7 @@ module.exports = class Interface {
 
         const ETHERNET = Joi.object({
             //transport: Joi.string().valid("tcp", "udp", "raw").default("tcp"),
-            socket: Joi.string().valid("tcp", "udp", "raw").default("tcp"),
+            socket: Joi.string().valid("tcp", "udp", "raw", "icmp").default("tcp"),
             host: Joi.string().required(),
             port: Joi.number().min(1).max(65535).required(),
             // https://regex101.com/r/wF7Nfa/1
@@ -350,6 +350,69 @@ module.exports = class Interface {
         });
 
         return clientSock;
+
+    }
+
+    ping(opts = {}) {
+
+        opts = Object.assign({
+            interval: 1000,
+            timeout: 2000,
+            count: 1
+        }, opts);
+
+        // TODO: improve error handling
+        // e.g. Timeouts, to few received events/etc.
+        // https://claude.ai/chat/77ae4de8-c3e1-4dda-a409-451e331810f1
+
+        return new Promise((resolve, reject) => {
+
+            if (this.settings.socket !== "icmp") {
+                throw new Error(`Cant call .ping() method on non icmp interfaces!`);
+            }
+
+            let stream = this.bridge();
+            let results = [];
+
+            /*
+            let caller = timeout(opts.count * opts.interval + 1000, (timedout, duration, args) => {
+                if (timedout) {
+
+                    reject(new Error("TIMEDOUT"));
+
+                } else {
+
+                    resolve(args[0]);
+
+                }
+            });
+            */
+
+            stream.once("error", (err) => {
+                reject(err);
+            });
+
+            stream.on("data", (data) => {
+                if (opts.count > 1) {
+
+                    results.push(JSON.parse(data));
+
+                    if (results.length === opts.count) {
+                        //caller(results);
+                        resolve(results);
+                    }
+
+                } else {
+
+                    //caller(JSON.parse(data));
+                    resolve(data);
+
+                }
+            });
+
+            stream.write(JSON.stringify(opts));
+
+        });
 
     }
 
